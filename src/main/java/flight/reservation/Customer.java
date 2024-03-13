@@ -1,5 +1,8 @@
 package flight.reservation;
-
+import flight.reservation.CoR.FlightCapacityHandler;
+import flight.reservation.CoR.NoFlyListCustomerHandler;
+import flight.reservation.CoR.NoFlyListPassengerHandler;
+import flight.reservation.CoR.OrderValidationHandler;
 import flight.reservation.flight.ScheduledFlight;
 import flight.reservation.order.FlightOrder;
 import flight.reservation.order.Order;
@@ -14,16 +17,26 @@ public class Customer {
     private String name;
     private List<Order> orders;
 
+    private final OrderValidationHandler validationChain; // Chain of Responsibility
+
     public Customer(String name, String email) {
         this.name = name;
         this.email = email;
         this.orders = new ArrayList<>();
+
+        // Initialize the validation chain
+        validationChain = new NoFlyListCustomerHandler(
+                new NoFlyListPassengerHandler(
+                        new FlightCapacityHandler()
+                )
+        );
     }
 
     public FlightOrder createOrder(List<String> passengerNames, List<ScheduledFlight> flights, double price) {
-        if (!isOrderValid(passengerNames, flights)) {
+        if (!validationChain.handleValidation(this, passengerNames, flights)) { // Use the chain for validation
             throw new IllegalStateException("Order is not valid");
         }
+
         FlightOrder order = new FlightOrder(flights);
         order.setCustomer(this);
         order.setPrice(price);
